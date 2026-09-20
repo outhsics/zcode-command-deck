@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZCode 总舵台 · 周度任务指挥中心</title>
+<style>
+  :root{
+    --bg:#070b14; --panel:#0d1322; --panel2:#111a2e; --line:#1c2740;
+    --txt:#e6edf7; --sub:#8b98ad; --faint:#5b6b84;
+    --cyan:#22d3ee; --violet:#a78bfa; --green:#34d399; --amber:#fbbf24;
+    --pink:#f472b6; --blue:#60a5fa; --slate:#94a3b8; --red:#f87171;
+    --glow:0 0 24px rgba(34,211,238,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background-image:radial-gradient(1200px 500px at 15% -10%,rgba(34,211,238,.07),transparent),
+                     radial-gradient(1000px 400px at 85% -5%,rgba(167,139,250,.06),transparent);
+    min-height:100vh; padding-bottom:60px;
+  }
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#233047;border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ===== header ===== */
+  header{
+    position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
+    background:rgba(7,11,20,.82); border-bottom:1px solid var(--line);
+    padding:16px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  }
+  .logo{width:40px;height:40px;border-radius:10px;flex:none;
+    background:linear-gradient(135deg,#0e7490,#155e75);
+    display:flex;align-items:center;justify-content:center;font-size:20px;
+    box-shadow:0 0 18px rgba(34,211,238,.35)}
+  .htitle h1{font-size:19px;letter-spacing:.5px;font-weight:700}
+  .htitle h1 em{font-style:normal;color:var(--cyan)}
+  .htitle p{font-size:12px;color:var(--sub);margin-top:2px}
+  .hmeta{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{font-size:11px;color:var(--sub);border:1px solid var(--line);
+    border-radius:99px;padding:5px 12px;background:rgba(17,26,46,.6)}
+  .pill b{color:var(--green);font-weight:600}
+  .pulse-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--green);margin-right:6px;box-shadow:0 0 8px var(--green);
+    animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+
+  main{max-width:1440px;margin:0 auto;padding:24px 28px 0}
+
+  /* ===== KPI ===== */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:14px;margin-bottom:22px}
+  .kpi{background:linear-gradient(160deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden}
+  .kpi::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--c,var(--cyan)),transparent);opacity:.7}
+  .kpi .num{font-size:27px;font-weight:700;font-family:"SF Mono",ui-monospace,Menlo,monospace;
+    color:var(--c,var(--cyan));line-height:1.1}
+  .kpi .num small{font-size:13px;color:var(--sub);font-weight:400;margin-left:2px}
+  .kpi .lbl{font-size:12px;color:var(--sub);margin-top:6px}
+  .kpi .trend{font-size:11px;color:var(--faint);margin-top:3px}
+
+  /* ===== panels ===== */
+  .grid-2{display:grid;grid-template-columns:380px 1fr;gap:16px;margin-bottom:22px}
+  @media(max-width:960px){.grid-2{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px 20px;box-shadow:var(--glow)}
+  .panel h2{font-size:14px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .panel h2 .bar{width:3px;height:14px;border-radius:2px;background:var(--cyan)}
+
+  /* donut */
+  .donut-wrap{display:flex;align-items:center;gap:20px}
+  .donut-center{font-family:ui-monospace,Menlo,monospace}
+  .legend{flex:1;display:flex;flex-direction:column;gap:7px}
+  .legend .li{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub)}
+  .legend .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .legend .li b{color:var(--txt);font-weight:500;margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+
+  /* effort bars */
+  .ebar-row{display:grid;grid-template-columns:190px 1fr 46px;gap:10px;align-items:center;margin-bottom:9px;font-size:12px}
+  .ebar-row .name{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ebar-row .track{height:8px;background:#141d33;border-radius:4px;overflow:hidden}
+  .ebar-row .fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 40%,transparent));
+    transition:width .8s cubic-bezier(.2,.8,.2,1)}
+  .ebar-row .val{font-family:ui-monospace,Menlo,monospace;color:var(--txt);text-align:right;font-size:11px}
+
+  /* gantt */
+  .gantt{overflow-x:auto}
+  .gantt-inner{min-width:860px}
+  .g-axis{position:relative;height:22px;margin-left:220px;font-size:10px;color:var(--faint)}
+  .g-axis span{position:absolute;transform:translateX(-50%)}
+  .g-row{display:flex;align-items:center;height:30px;gap:0;position:relative}
+  .g-row .g-label{width:220px;flex:none;font-size:11.5px;color:var(--sub);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px}
+  .g-row:hover .g-label{color:var(--txt)}
+  .g-track{flex:1;height:100%;position:relative;background:
+    repeating-linear-gradient(90deg,transparent 0,transparent calc(100%/7 - 1px),#141d33 calc(100%/7 - 1px),#141d33 calc(100%/7))}
+  .g-bar{position:absolute;top:8px;height:14px;border-radius:4px;opacity:.9;
+    background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 55%,#0d1322));
+    box-shadow:0 0 10px color-mix(in srgb,var(--c) 30%,transparent);cursor:default}
+  .g-bar:hover{opacity:1;box-shadow:0 0 14px color-mix(in srgb,var(--c) 55%,transparent)}
+
+  /* ===== task cards ===== */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-size:12px;padding:6px 13px;border-radius:99px;border:1px solid var(--line);
+    background:var(--panel);color:var(--sub);cursor:pointer;transition:all .2s;user-select:none}
+  .chip:hover{border-color:var(--c,var(--cyan));color:var(--txt)}
+  .chip.on{background:color-mix(in srgb,var(--c,var(--cyan)) 16%,transparent);
+    border-color:var(--c,var(--cyan));color:var(--txt);box-shadow:0 0 12px color-mix(in srgb,var(--c,var(--cyan)) 20%,transparent)}
+  .sortsel{margin-left:auto;font-size:12px;color:var(--sub);background:var(--panel);
+    border:1px solid var(--line);border-radius:8px;padding:6px 10px;outline:none;cursor:pointer}
+  .count-hint{font-size:11px;color:var(--faint)}
+
+  .task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px}
+  @media(max-width:880px){.task-grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(165deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-radius:14px;padding:18px 20px;cursor:pointer;
+    transition:border-color .2s,transform .2s,box-shadow .2s;position:relative}
+  .card:hover{border-color:color-mix(in srgb,var(--c) 45%,var(--line));
+    transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.35),var(--glow)}
+  .card.expanded{border-color:color-mix(in srgb,var(--c) 60%,var(--line));grid-column:1/-1}
+  .card .chev{position:absolute;top:16px;right:18px;color:var(--faint);font-size:12px;transition:transform .25s}
+  .card.expanded .chev{transform:rotate(180deg)}
+  .card-top{display:flex;align-items:center;gap:9px;margin-bottom:6px;padding-right:24px}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .card-title{font-size:15px;font-weight:600;letter-spacing:.2px}
+  .cat-chip{margin-left:auto;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:none;
+    color:var(--c);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);
+    background:color-mix(in srgb,var(--c) 10%,transparent)}
+  .card-meta{font-size:11px;color:var(--faint);margin-bottom:10px;font-family:ui-monospace,Menlo,monospace}
+  .card-summary{font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:14px}
+  .card-summary b{color:var(--txt);font-weight:500}
+
+  .prog-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .prog-track{flex:1;height:7px;border-radius:4px;background:#141d33;overflow:hidden}
+  .prog-fill{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .prog-num{font-size:11px;font-family:ui-monospace,Menlo,monospace;width:38px;text-align:right}
+  .p-done .prog-fill{background:linear-gradient(90deg,#059669,var(--green))}
+  .p-run .prog-fill{background:linear-gradient(90deg,#0891b2,var(--cyan));box-shadow:0 0 8px rgba(34,211,238,.4)}
+  .p-wait .prog-fill{background:linear-gradient(90deg,#b45309,var(--amber))}
+
+  .stat-line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--sub)}
+  .stars{color:var(--amber);letter-spacing:1px;font-size:12px}
+  .stars .off{color:#2b3a55}
+  .star-num{font-family:ui-monospace,Menlo,monospace;color:var(--txt);margin-left:3px}
+  .mini-stats{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .ms{font-size:10.5px;color:var(--sub);border:1px solid var(--line);border-radius:7px;
+    padding:4px 9px;background:rgba(20,29,51,.5);font-family:ui-monospace,Menlo,monospace}
+  .ms b{color:var(--txt);font-weight:600}
+
+  /* detail */
+  .detail{display:none;margin-top:16px;border-top:1px dashed var(--line);padding-top:16px}
+  .card.expanded .detail{display:grid;grid-template-columns:1fr 300px;gap:22px}
+  @media(max-width:1080px){.card.expanded .detail{grid-template-columns:1fr}}
+  .d-sec{margin-bottom:14px}
+  .d-sec h3{font-size:11px;letter-spacing:1.5px;color:var(--c);margin-bottom:8px;font-weight:600}
+  .d-sec p{font-size:12.5px;color:var(--sub);line-height:1.75}
+  .d-sec ul{list-style:none}
+  .d-sec li{font-size:12.5px;color:var(--sub);line-height:1.7;padding-left:16px;position:relative;margin-bottom:5px}
+  .d-sec li::before{content:"▸";position:absolute;left:0;color:var(--c);font-size:11px}
+  .d-sec li b{color:var(--txt);font-weight:500}
+  .tag-out{display:inline-block;font-size:11px;color:var(--green);border:1px solid rgba(52,211,153,.35);
+    border-radius:6px;padding:2px 8px;margin:3px 4px 0 0;background:rgba(52,211,153,.07)}
+  .toolbars{background:#0a101f;border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .toolbars h4{font-size:10.5px;color:var(--faint);letter-spacing:1px;margin-bottom:10px}
+  .t-row{display:grid;grid-template-columns:96px 1fr 30px;gap:8px;align-items:center;margin-bottom:7px;font-size:11px}
+  .t-row .tn{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-family:ui-monospace,Menlo,monospace}
+  .t-row .tt{height:6px;background:#141d33;border-radius:3px;overflow:hidden}
+  .t-row .tf{height:100%;border-radius:3px;background:color-mix(in srgb,var(--c) 70%,#0d1322)}
+  .t-row .tc{color:var(--txt);font-family:ui-monospace,Menlo,monospace;text-align:right;font-size:10.5px}
+  .next-tag{display:inline-block;font-size:11px;color:var(--cyan);border:1px dashed rgba(34,211,238,.4);
+    border-radius:6px;padding:3px 9px;margin:3px 5px 0 0;background:rgba(34,211,238,.05)}
+
+  /* insights */
+  .insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:22px}
+  .insight{background:linear-gradient(165deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-left:3px solid var(--c,var(--cyan));
+    border-radius:12px;padding:18px 20px}
+  .insight .no{font-size:11px;color:var(--c,var(--cyan));letter-spacing:2px;margin-bottom:8px;font-family:ui-monospace,Menlo,monospace}
+  .insight h3{font-size:14px;margin-bottom:8px;font-weight:600}
+  .insight p{font-size:12.5px;color:var(--sub);line-height:1.75}
+  .insight p b{color:var(--txt);font-weight:500}
+
+  footer{max-width:1440px;margin:34px auto 0;padding:0 28px;font-size:11px;color:var(--faint);line-height:1.8}
+  footer code{color:var(--sub);background:#141d33;border-radius:4px;padding:1px 6px;font-family:ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛰</div>
+  <div class="htitle">
+    <h1>ZCODE <em>总舵台</em> · 周度任务指挥中心</h1>
+    <p>最近 7 天全部本地会话的任务进度 / 价值 / 背景 / 产出 全景</p>
+  </div>
+  <div class="hmeta">
+    <span class="pill"><span class="pulse-dot"></span>数据实测于本地 SQLite · 截至 <b>2026-09-20 08:53</b></span>
+    <span class="pill">范围 2026-09-13 ~ 09-20</span>
+  </div>
+</header>
+
+<main>
+  <!-- KPI -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- donut + effort -->
+  <div class="grid-2">
+    <div class="panel">
+      <h2><span class="bar"></span>算力投入结构 · 按任务类别</h2>
+      <div class="donut-wrap">
+        <svg id="donut" width="150" height="150" viewBox="0 0 150 150"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span class="bar"></span>任务投入榜 · 综合消息量 / 工具调用 / Token</h2>
+      <div id="effortBars"></div>
+    </div>
+  </div>
+
+  <!-- gantt -->
+  <div class="panel" style="margin-bottom:22px">
+    <h2><span class="bar"></span>任务时间线 · 09-13 → 09-20</h2>
+    <div class="gantt"><div class="gantt-inner" id="gantt"></div></div>
+  </div>
+
+  <!-- tasks -->
+  <div class="toolbar">
+    <div class="chips" id="chips"></div>
+    <select class="sortsel" id="sortSel">
+      <option value="value">排序：任务价值 ↓</option>
+      <option value="effort">排序：投入指数 ↓</option>
+      <option value="time">排序：开始时间 ↓</option>
+      <option value="progress">排序：完成度 ↓</option>
+    </select>
+    <span class="count-hint" id="countHint"></span>
+  </div>
+  <div class="task-grid" id="taskGrid"></div>
+
+  <!-- insights -->
+  <h2 style="font-size:14px;letter-spacing:.5px;margin:30px 0 0;display:flex;align-items:center;gap:8px">
+    <span class="bar" style="width:3px;height:14px;border-radius:2px;background:var(--cyan);display:inline-block"></span>
+    战略洞察 · 把控建议
+  </h2>
+  <div class="insights" id="insights"></div>
+</main>
+
+<footer>
+  数据来源：<code>~/.zcode/cli/db/db.sqlite</code> 的 session / message / tool_usage / model_usage 四张表实测聚合 · 每周在 zcode 中重跑「查询本地 zcode 会话」任务即可刷新本舵台 ·
+  文件：<code>~/.zcode/workspace/default/zcode-command-deck.html</code>
+</footer>
+
+<script>
+/* ================= 数据 ================= */
+const CATS = {
+  content:  {label:"内容流水线", c:"#22d3ee"},
+  dev:      {label:"开发工程",   c:"#a78bfa"},
+  knowledge:{label:"知识资产",   c:"#34d399"},
+  intel:    {label:"变现与情报", c:"#fbbf24"},
+  resource: {label:"资源采集",   c:"#f472b6"},
+  ops:      {label:"运维效率",   c:"#60a5fa"},
+  analysis: {label:"系统分析",   c:"#94a3b8"},
+};
+const STATUS = {
+  done:  {label:"已完成", cls:"p-done"},
+  run:   {label:"进行中", cls:"p-run"},
+  wait:  {label:"待落地", cls:"p-wait"},
+};
+
+const TASKS = [
+  {
+    id:"mini", cat:"dev", status:"run", progress:85, value:5.0,
+    title:"小程序技术选型与 Node 后端开发",
+    start:"2026-09-16T08:23", end:"2026-09-19T03:47", span:"跨 3 天 · 活跃 67h",
+    dir:"~/Documents/company",
+    summary:"从公司战略 PPT 中的原型图<b>落地为可运行小程序 + Node 模拟后端</b>，已完成端到端验收。",
+    background:"公司确定战略方向，规划方案 PPT 内含小程序原型。需要一个可运行、可验收的产品原型来快速验证方向，后端先用 Node 模拟。",
+    actions:[
+      "<b>技术选型</b>：后端在 Hono / NestJS 中评估决策，前端采用 Taro React + TanStack 基础栈",
+      "前后端并行开发：累计 204 次文件创建 + 30 次编辑，完成页面与接口搭建",
+      "55 次浏览器脚本交互验证 + 205 次 Bash 构建/启动联调",
+      "启动前后端并打开项目供人工验收，执行端到端验收流程",
+      "迭代修复 15 轮报错直至验收通过",
+    ],
+    outputs:["可运行的小程序前端","Node 模拟后端","通过端到端验收"],
+    next:["接入真实后端 / 数据库","补齐部署与 CI","按验收反馈迭代功能"],
+    tools:{"Bash":205,"Write":204,"node_repl":55,"Read":32,"Edit":30},
+    msgs:499, calls:553, err:15, tin:133.4, tout:283.2,
+  },
+  {
+    id:"companion", cat:"knowledge", status:"run", progress:90, value:4.5,
+    title:"AI 电子伴侣教程沉淀 Obsidian + GitHub Pages 镜像站",
+    start:"2026-09-14T23:17", end:"2026-09-19T03:47", span:"跨 5 天 · 活跃 98h",
+    dir:"~/.zcode/workspace/default",
+    summary:"把 aicompanion.usehook.cn 教程<b>全站沉淀进本地 Obsidian 知识库</b>，并搭出免登录静态镜像站。",
+    background:"该网站是 AI 学习方法论教程，配套 GitHub 项目 yangbo5207/ai-agent。目标是沉淀为私人知识库可离线学习，同时保留一份一模一样的线上镜像。",
+    actions:[
+      "全站文档抓取、清洗后写入本地 Obsidian 仓库形成知识库",
+      "克隆并本地部署配套 ai-agent 项目",
+      "生成<b>全静态免登录镜像站</b>，推送到 GitHub 私有仓库",
+      "开启 GitHub Pages 发布线上站点（314 次 Bash 完成抓取/构建/Git 流程）",
+    ],
+    outputs:["Obsidian 知识库","GitHub Pages 线上镜像站","本地可运行 ai-agent 项目"],
+    next:["定期同步新章节","把教程方法论整理为行动清单"],
+    tools:{"Bash":314,"Read":13,"TodoWrite":11,"Edit":11,"Write":8},
+    msgs:420, calls:370, err:1, tin:77.5, tout:199.1,
+  },
+  {
+    id:"douyin-style", cat:"content", status:"run", progress:70, value:4.0,
+    title:"抖音对标账号下载 + 风格模仿创作流水线",
+    start:"2026-09-13T23:29", end:"2026-09-19T02:46", span:"跨 6 天 · 活跃 123h",
+    dir:"~/.zcode/workspace/default",
+    summary:"douyin-downloader <b>批量下载对标账号全部视频</b>，转文字交给 AI 拆解，打通剪映模仿创作链路。",
+    background:"想复刻某对标抖音账号的内容风格做自己的账号，需要一个「下载 → 拆解 → 模仿」的可重复流水线。",
+    actions:[
+      "部署 douyin-downloader，批量下载对标账号全部视频",
+      "视频批量转文字，交给 AI 做内容拆解与选题分析",
+      "打通本地剪映（已登录），探索风格模仿剪辑",
+      "调研并推荐视频学习 / 拆解工具",
+    ],
+    outputs:["对标账号全量视频素材","全套文字稿","可复用的下载拆解脚本"],
+    next:["固化 SOP 脚本","选定第一批模仿选题并出成片"],
+    tools:{"Bash":135,"Write":28,"Read":16,"Edit":10,"TodoWrite":9},
+    msgs:199, calls:199, err:6, tin:25.2, tout:135.4,
+  },
+  {
+    id:"xhs-ppt", cat:"content", status:"run", progress:60, value:4.0,
+    title:"小红书绘本 PPT 动态视频创作",
+    start:"2026-09-17T23:22", end:"2026-09-19T01:31", span:"跨 2 天 · 活跃 26h",
+    dir:"~",
+    summary:"对标一条小红书绘本爆款，Agent <b>自主检索并集成 GitHub 上的 Skills / MCP 工具</b>，搭建绘本动态视频生产线。",
+    background:"小红书绘本类是验证过的爆款赛道。以一条具体爆款为蓝本，复刻出同类 PPT 动态视频。",
+    actions:[
+      "解析小红书爆款链接，拆解内容结构与呈现形式",
+      "自主在 GitHub 检索可用的 Skills / MCP / 工具链并集成",
+      "搭建「绘本 → PPT → 动态视频」自动化制作流程（Bash×97 + Edit×27）",
+    ],
+    outputs:["绘本动态视频制作流程雏形"],
+    next:["完成第一条成片并发小红书测试数据","沉淀为标准模板"],
+    tools:{"Bash":97,"Edit":27,"Read":23,"Write":10,"TodoWrite":7},
+    msgs:172, calls:175, err:1, tin:22.1, tout:130.9,
+  },
+  {
+    id:"channels", cat:"content", status:"done", progress:100, value:3.5,
+    title:"视频号/抖音下载能力建设 + 微信收藏视频下载",
+    start:"2026-09-19T23:17", end:"2026-09-20T00:33", span:"1.2h",
+    dir:"~/Documents/company",
+    summary:"盘点历史下载任务后，<b>选定并安装最佳视频号下载工具</b>，成功下载微信收藏视频验证链路。",
+    background:"视频号是下一个内容搬运目标，但下载链路缺失。先盘点历史任务，再补齐工具能力。",
+    actions:[
+      "全量检索 zcode 历史会话，盘点视频号/抖音下载相关任务",
+      "GitHub 搜索对比视频号下载工具，选定最优并安装",
+      "实际下载微信收藏第一个视频，验证链路可用",
+    ],
+    outputs:["可用的视频号下载工具链","验证通过的下载能力"],
+    next:["把视频号下载并入统一下载流水线"],
+    tools:{"Bash":115,"Read":28,"TodoWrite":4,"Write":1,"Skill":1},
+    msgs:167, calls:149, err:0, tin:20.5, tout:53.8,
+  },
+  {
+    id:"baby", cat:"resource", status:"done", progress:100, value:3.0,
+    title:"3 岁宝宝英文启蒙资源采集",
+    start:"2026-09-19T23:42", end:"2026-09-20T01:11", span:"1.5h",
+    dir:"~/Documents/company",
+    summary:"下载<b>全球公认的英语启蒙视频、儿歌音乐与经典绘本</b>，本地分类整理成资源库。",
+    background:"给 3 岁宝宝系统化英文启蒙，要求全球公认、专家推荐的优质资源且数量充足。",
+    actions:[
+      "筛选并下载 YouTube 公认经典的英语学习视频",
+      "下载适合 3 岁的儿歌音乐资源",
+      "收集全球公认绘本资源",
+      "22 次编辑整理资源清单与命名规范",
+    ],
+    outputs:["本地分类好的启蒙资源库（视频+音频+绘本）"],
+    next:["制定播放排期表","素材可复用为小红书育儿内容"],
+    tools:{"Bash":52,"Edit":22,"Write":6,"TodoWrite":4},
+    msgs:81, calls:86, err:2, tin:6.7, tout:58.2,
+  },
+  {
+    id:"douyin-clip", cat:"content", status:"run", progress:80, value:3.5,
+    title:"Douyin 下载与模仿剪辑流程验证",
+    start:"2026-09-18T23:08", end:"2026-09-19T23:42", span:"跨 2 天 · 活跃 25h",
+    dir:"~/Documents/company",
+    summary:"按 X 帖子指引验证 douyin-downloader，<b>跑通「下载 → 模仿剪辑」完整流程</b>。",
+    background:"从 X 帖子获知 douyin-downloader 项目，验证其对目标视频的下载与二次创作可行性。",
+    actions:[
+      "WebFetch 解析 X 帖子与项目文档",
+      "68 次 Bash 实测下载目标视频",
+      "验证模仿剪辑工作流可行性",
+    ],
+    outputs:["验证结论","可复用下载命令集"],
+    next:["与 9-13 会话的拆解链路合并为统一流水线"],
+    tools:{"Bash":68,"TodoWrite":5,"TaskOutput":3,"Write":2,"WebFetch":2},
+    msgs:102, calls:83, err:0, tin:6.4, tout:45.1,
+  },
+  {
+    id:"awesome", cat:"intel", status:"wait", progress:30, value:4.0,
+    title:"awesome-jev 仓库变现分析与小红书落地",
+    start:"2026-09-19T23:48", end:"2026-09-20T00:03", span:"14min",
+    dir:"~/Documents/company",
+    summary:"分析 awesome-jev 仓库可变现项目，<b>产出小红书虚拟资料变现方案（尚未执行落地）</b>。",
+    background:"希望把 GitHub 优质开源资源转化为小红书可售卖的虚拟资料，验证信息差变现路径。",
+    actions:[
+      "7 次 WebFetch 深读仓库项目清单",
+      "结合生财 MCP 检索站内同类玩法做交叉验证",
+      "产出变现思路与落地方案文档（Write×3）",
+    ],
+    outputs:["变现方案文档（待执行）"],
+    next:["选 1 个项目做成第一批虚拟资料","小红书上架测试市场反馈"],
+    tools:{"WebFetch":7,"Write":3,"TodoWrite":3,"searchTopic":1,"activitySearch":1},
+    msgs:12, calls:17, err:1, tin:0.9, tout:17.2,
+  },
+  {
+    id:"subject-browser", cat:"ops", status:"done", progress:100, value:2.0,
+    title:"「科目浏览器」无法打开排查修复",
+    start:"2026-09-13T23:14", end:"2026-09-14T23:20", span:"跨 2 天 · 活跃 24h",
+    dir:"~/.zcode/workspace/default",
+    summary:"用 computer-use 辅助诊断，<b>恢复「科目浏览器」正常启动</b>。",
+    background:"本地教育类应用「科目浏览器」突然打不开，影响正常使用，需要尽快恢复。",
+    actions:[
+      "44 次 Bash 检查进程、日志与依赖",
+      "computer-use 观察应用窗口状态并交互验证",
+    ],
+    outputs:["应用恢复正常"],
+    next:["无 · 已闭环"],
+    tools:{"Bash":44,"computer-use":7},
+    msgs:57, calls:52, err:0, tin:3.8, tout:22.2,
+  },
+  {
+    id:"scys", cat:"intel", status:"done", progress:100, value:3.0,
+    title:"scys.com 生财帖子内容解读",
+    start:"2026-09-19T23:16", end:"2026-09-19T23:49", span:"32min",
+    dir:"~/Documents/company",
+    summary:"用生财 MCP 解读一篇星球帖子，<b>讲清内容核心观点与实际用途</b>。",
+    background:"一篇生财帖子需要快速判断是否值得深读、对自己有什么用。",
+    actions:[
+      "searchTopic / contentSearch / topicDetail 组合拉取帖子全文与上下文",
+      "提炼核心观点与实用性结论",
+    ],
+    outputs:["帖子核心观点 + 实用性结论"],
+    next:["有价值结论可并入 awesome-jev 变现方案"],
+    tools:{"Bash":5,"searchTopic":4,"contentSearch":4,"TodoWrite":4,"topicDetail":1},
+    msgs:22, calls:19, err:0, tin:2.5, tout:34.5,
+  },
+  {
+    id:"git-weekly", cat:"ops", status:"done", progress:100, value:2.0,
+    title:"本周 Git 活动汇总 → 周五站会摘要",
+    start:"2026-09-13T22:15", end:"2026-09-13T23:05", span:"50min",
+    dir:"~/Documents/scys-zai",
+    summary:"扫描仓库本周提交与 PR，<b>自动生成周五站会摘要</b>。",
+    background:"周五站会需要汇报本周进展，手动整理费时。",
+    actions:["12 次 Bash 拉取 git log / PR 记录并归纳成摘要"],
+    outputs:["站会摘要一份"],
+    next:["可固化为每周例行自动化"],
+    tools:{"Bash":12},
+    msgs:11, calls:12, err:0, tin:0.5, tout:5.8,
+  },
+  {
+    id:"obsidian-sync", cat:"knowledge", status:"done", progress:100, value:2.0,
+    title:"Obsidian GitHub 仓库安全同步",
+    start:"2026-09-13T22:12", end:"2026-09-14T23:18", span:"跨 2 天",
+    dir:"~",
+    summary:"对 Obsidian 仓库执行<b>先 pull 后 push 的安全同步</b>，全程无覆盖。",
+    background:"多端使用 Obsidian，需要保证 GitHub 仓库最新且不丢任何改动。",
+    actions:["pull → 冲突检查 → push 的安全同步流程"],
+    outputs:["仓库同步至最新"],
+    next:["无 · 已闭环"],
+    tools:{"Bash":10},
+    msgs:13, calls:10, err:0, tin:0.6, tout:6.0,
+  },
+  {
+    id:"session-analysis", cat:"analysis", status:"done", progress:100, value:2.0,
+    title:"本周会话盘点分析 → 本总舵台",
+    start:"2026-09-20T08:53", end:"2026-09-20T08:53", span:"实时",
+    dir:"~/.zcode/workspace/default",
+    summary:"直连本地 SQLite 盘点最近 7 天全部会话，<b>聚合生成本总舵台</b>。",
+    background:"需要一个全局视角复盘一周工作投入与产出，支撑下周决策。",
+    actions:[
+      "查询 session / message / tool_usage / model_usage 四张表",
+      "聚合消息量、工具调用、Token 消耗与时间跨度",
+      "产出本总舵台页面",
+    ],
+    outputs:["本总舵台页面"],
+    next:["每周重跑一次即可持续把控"],
+    tools:{"Bash":12},
+    msgs:12, calls:12, err:0, tin:0.9, tout:5.1,
+  },
+  {
+    id:"chrome", cat:"ops", status:"done", progress:100, value:1.5,
+    title:"本地 Chrome 无法打开排查",
+    start:"2026-09-13T22:10", end:"2026-09-13T22:12", span:"2min",
+    dir:"~",
+    summary:"快速定位并<b>修复 Chrome 无法启动</b>问题。",
+    background:"Chrome 打不开影响所有浏览器工作流，需立即恢复。",
+    actions:["5 次 Bash 进程/配置诊断并修复"],
+    outputs:["浏览器恢复正常"],
+    next:["无 · 已闭环"],
+    tools:{"Bash":5},
+    msgs:7, calls:5, err:0, tin:0.3, tout:4.2,
+  },
+];
+
+/* ================= 计算 ================= */
+TASKS.forEach(t=>{
+  t.raw = t.msgs + t.calls + t.tin*3;
+});
+const maxRaw = Math.max(...TASKS.map(t=>t.raw));
+TASKS.forEach(t=>{ t.effort = Math.max(1, Math.round(t.raw/maxRaw*100)); });
+const tot = k => TASKS.reduce((s,t)=>s+t[k],0);
+const KPI = [
+  {num:TASKS.length, unit:"个", lbl:"主会话任务", trend:"另有 9 个子代理会话", c:"#22d3ee"},
+  {num:tot("msgs").toLocaleString(), unit:"", lbl:"消息总量", trend:"含用户/助手/系统全部消息", c:"#a78bfa"},
+  {num:tot("calls").toLocaleString(), unit:"次", lbl:"工具调用", trend:"失败 "+tot("err")+" 次 · 成功率 98.5%", c:"#34d399"},
+  {num:Math.round(tot("tin")), unit:"M", lbl:"Token 输入", trend:"输出约 "+(tot("tout")/1000).toFixed(2)+"M", c:"#fbbf24"},
+  {num:8, unit:"", lbl:"覆盖日期", trend:"09-15 单日休整", c:"#f472b6"},
+  {num:TASKS.filter(t=>t.status==="done").length, unit:"/"+TASKS.length, lbl:"任务闭环", trend:"6 个进行中/待落地", c:"#60a5fa"},
+];
+
+/* ================= 渲染 KPI ================= */
+document.getElementById("kpis").innerHTML = KPI.map(k=>
+  `<div class="kpi" style="--c:${k.c}">
+     <div class="num">${k.num}<small>${k.unit}</small></div>
+     <div class="lbl">${k.lbl}</div>
+     <div class="trend">${k.trend}</div>
+   </div>`).join("");
+
+/* ================= 甜甜圈 ================= */
+const catEffort = {};
+TASKS.forEach(t=>{ catEffort[t.cat]=(catEffort[t.cat]||0)+t.effort; });
+const donutData = Object.entries(catEffort).sort((a,b)=>b[1]-a[1]);
+const totalE = donutData.reduce((s,[,v])=>s+v,0);
+const R=58, CX=75, CY=75, CIRC=2*Math.PI*R;
+let acc=0, segs="";
+donutData.forEach(([cat,v])=>{
+  const frac=v/totalE, c=CATS[cat].c;
+  segs+=`<circle r="${R}" cx="${CX}" cy="${CY}" fill="none" stroke="${c}" stroke-width="17"
+    stroke-dasharray="${(frac*CIRC-2).toFixed(1)} ${(CIRC-frac*CIRC+2).toFixed(1)}"
+    stroke-dashoffset="${(-acc*CIRC).toFixed(1)}" transform="rotate(-90 ${CX} ${CY})"
+    style="filter:drop-shadow(0 0 4px ${c}55)"><title>${CATS[cat].label} ${v}</title></circle>`;
+  acc+=frac;
+});
+document.getElementById("donut").innerHTML = segs +
+  `<text x="${CX}" y="70" text-anchor="middle" fill="#e6edf7" font-size="17" font-weight="700" font-family="ui-monospace,Menlo,monospace">${totalE}</text>
+   <text x="${CX}" y="88" text-anchor="middle" fill="#8b98ad" font-size="10">投入指数</text>`;
+document.getElementById("legend").innerHTML = donutData.map(([cat,v])=>{
+  const pct=(v/totalE*100).toFixed(1);
+  return `<div class="li"><span class="dot" style="background:${CATS[cat].c}"></span>${CATS[cat].label}<b>${pct}%</b></div>`;
+}).join("");
+
+/* ================= 投入榜 ================= */
+const effortSorted=[...TASKS].sort((a,b)=>b.effort-a.effort);
+document.getElementById("effortBars").innerHTML = effortSorted.map(t=>
+  `<div class="ebar-row" style="--c:${CATS[t.cat].c}" title="${t.title}">
+     <span class="name">${t.title}</span>
+     <div class="track"><div class="fill" style="width:${t.effort}%"></div></div>
+     <span class="val">${t.effort}</span>
+   </div>`).join("");
+
+/* ================= 甘特 ================= */
+const T0=new Date("2026-09-13T20:00").getTime(), T1=new Date("2026-09-20T10:00").getTime();
+const RANGE=T1-T0, DAY=RANGE/6.58;
+let axis="";
+for(let i=0;i<=7;i++){
+  const d=new Date(T0+i*86400000);
+  const pos=((T0+i*86400000-T0)/RANGE*100);
+  if(pos<=100) axis+=`<span style="left:${pos}%">${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}</span>`;
+}
+const gSorted=[...TASKS].sort((a,b)=>new Date(a.start)-new Date(b.start));
+document.getElementById("gantt").innerHTML =
+  `<div class="g-axis" style="position:relative;margin-left:220px;height:20px">${axis}</div>` +
+  gSorted.map(t=>{
+    const s=new Date(t.start).getTime(), e=Math.max(new Date(t.end).getTime(), s+1800000);
+    const l=(s-T0)/RANGE*100, w=Math.max((e-s)/RANGE*100,1.2);
+    const l2=Math.min(l,98.8), w2=Math.min(w,100-l2);
+    const sTxt=new Date(t.start).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+    const eTxt=new Date(t.end).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+    return `<div class="g-row" title="${t.title}\n${sTxt} → ${eTxt}">
+      <span class="g-label">${t.title}</span>
+      <div class="g-track"><div class="g-bar" style="left:${l2}%;width:${w2}%;--c:${CATS[t.cat].c}"></div></div>
+    </div>`;
+  }).join("");
+
+/* ================= 任务卡片 ================= */
+let curCat="all", curSort="value";
+function fmtTin(m){ return m>=1 ? m.toFixed(1)+"M" : Math.round(m*1000)+"K"; }
+function stars(v){
+  let s="";
+  for(let i=1;i<=5;i++) s+=`<span class="${v>=i-0.25?"":"off"}">★</span>`;
+  return s;
+}
+function render(){
+  let list=TASKS.filter(t=>curCat==="all"||t.cat===curCat);
+  const sorters={
+    value:(a,b)=>b.value-a.value||b.effort-a.effort,
+    effort:(a,b)=>b.effort-a.effort,
+    time:(a,b)=>new Date(b.start)-new Date(a.start),
+    progress:(a,b)=>b.progress-a.progress,
+  };
+  list.sort(sorters[curSort]);
+  document.getElementById("countHint").textContent=`共 ${list.length} 个任务`;
+  document.getElementById("taskGrid").innerHTML=list.map(t=>{
+    const cat=CATS[t.cat], st=STATUS[t.status];
+    const toolMax=Math.max(...Object.values(t.tools));
+    const toolRows=Object.entries(t.tools).map(([n,c])=>
+      `<div class="t-row"><span class="tn" title="${n}">${n}</span>
+       <div class="tt"><div class="tf" style="width:${(c/toolMax*100).toFixed(0)}%"></div></div>
+       <span class="tc">${c}</span></div>`).join("");
+    return `
+    <div class="card ${st.cls}" style="--c:${cat.c}" data-id="${t.id}" onclick="toggleCard(this)">
+      <span class="chev">▼</span>
+      <div class="card-top">
+        <span class="status-dot" style="background:${t.status==="done"?"var(--green)":t.status==="run"?"var(--cyan)":"var(--amber)"};box-shadow:0 0 8px ${t.status==="done"?"#34d399":t.status==="run"?"#22d3ee":"#fbbf24"}"></span>
+        <span class="card-title">${t.title}</span>
+        <span class="cat-chip">${cat.label}</span>
+      </div>
+      <div class="card-meta">${t.start.slice(5,16).replace("T"," ")} → ${t.end.slice(5,16).replace("T"," ")} · ${t.span} · ${t.dir}</div>
+      <div class="card-summary">${t.summary}</div>
+      <div class="prog-row">
+        <div class="prog-track"><div class="prog-fill" style="width:${t.progress}%"></div></div>
+        <span class="prog-num">${t.progress}%</span>
+      </div>
+      <div class="stat-line">
+        <span>价值 <span class="stars">${stars(t.value)}</span><span class="star-num">${t.value.toFixed(1)}</span></span>
+        <span>状态 <b style="color:${t.status==="done"?"var(--green)":t.status==="run"?"var(--cyan)":"var(--amber)"}">${st.label}</b></span>
+      </div>
+      <div class="mini-stats">
+        <span class="ms">消息 <b>${t.msgs}</b></span>
+        <span class="ms">工具 <b>${t.calls}</b></span>
+        <span class="ms">Token <b>${fmtTin(t.tin)}</b></span>
+        <span class="ms">报错 <b>${t.err}</b></span>
+      </div>
+      <div class="detail">
+        <div>
+          <div class="d-sec"><h3>任务背景</h3><p>${t.background}</p></div>
+          <div class="d-sec"><h3>做了什么</h3><ul>${t.actions.map(a=>`<li>${a}</li>`).join("")}</ul></div>
+          <div class="d-sec"><h3>关键产出</h3><div>${t.outputs.map(o=>`<span class="tag-out">✓ ${o}</span>`).join("")}</div></div>
+          <div class="d-sec"><h3>下一步建议</h3><div>${t.next.map(n=>`<span class="next-tag">→ ${n}</span>`).join("")}</div></div>
+        </div>
+        <div class="toolbars"><h4>工具调用分布 TOP</h4>${toolRows}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+function toggleCard(el){
+  const was=el.classList.contains("expanded");
+  document.querySelectorAll(".card.expanded").forEach(c=>c.classList.remove("expanded"));
+  if(!was) el.classList.add("expanded");
+}
+/* chips */
+const chipDefs=[["all","全部","#22d3ee"],...Object.entries(CATS).map(([k,v])=>[k,v.label,v.c])];
+document.getElementById("chips").innerHTML=chipDefs.map(([k,label,c])=>
+  `<span class="chip ${k==="all"?"on":""}" data-cat="${k}" style="--c:${c}" onclick="pickCat(this)">${label}</span>`).join("");
+function pickCat(el){
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+  el.classList.add("on"); curCat=el.dataset.cat; render();
+}
+document.getElementById("sortSel").addEventListener("change",e=>{curSort=e.target.value;render();});
+render();
+
+/* ================= 洞察 ================= */
+document.getElementById("insights").innerHTML=[
+  {c:"#fbbf24",no:"INSIGHT 01",h:"投入与变现严重错配：算力 57% 在资产与工程，直接变现动作仅 2%",
+   p:"开发工程 + 知识资产占投入指数 <b>57%</b>，内容流水线 <b>33%</b>；而直接指向变现的 awesome-jev 方案仅占 <b>~2%</b>，且停留在文档阶段（完成度 30%）。<b>建议：</b>下周把 awesome-jev 方案收敛为一条 SOP，先做出第一批虚拟资料上架小红书测试，用市场反馈校准方向。"},
+  {c:"#22d3ee",no:"INSIGHT 02",h:"内容流水线已初步成型，但分散在 4 个会话、尚未合并",
+   p:"「douyin-downloader 下载 → 转文字 AI 拆解 → 剪映模仿 → 小红书发布」链路在 9-13/9-17/9-18/9-19 四个会话中反复验证，工具链趋于稳定。<b>建议：</b>把分散的脚本与命令固化为统一 SOP（一个脚本 + 一份 checkList），避免每次重跑会话重复踩坑。"},
+  {c:"#a78bfa",no:"INSIGHT 03",h:"小程序是单点最大投入，已到验收线，差最后一步部署闭环",
+   p:"单会话 553 次工具调用、1.33 亿 Token 输入，是本周工程量之最；端到端验收已通过。<b>建议：</b>下一步接入真实后端/数据库并完成部署，把「原型」推进为「可对外演示的产品」，这步的价值兑现最大。"},
+  {c:"#34d399",no:"INSIGHT 04",h:"杂务 100% 自愈闭环，环境运维不再消耗注意力",
+   p:"浏览器修复×2、Git 周报、仓库同步 4 个杂务全部快速闭环（多数 <1h），且零失败。<b>建议：</b>把 Git 周报固化为每周五自动任务；环境类问题延续「报错即丢给 zcode」的模式即可，无需亲自排查。"},
+].map(i=>`<div class="insight" style="--c:${i.c}">
+   <div class="no">${i.no}</div><h3>${i.h}</h3><p>${i.p}</p></div>`).join("");
+</script>
+</body>
+</html>
